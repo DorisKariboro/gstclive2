@@ -38,6 +38,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activating, setActivating] = useState(false);
 
+  React.useEffect(() => {
+    if (currentStudentAdmissionNo) {
+      setActiveAdmNo(currentStudentAdmissionNo);
+    }
+  }, [currentStudentAdmissionNo]);
+
   const student = students.find(
     (s) => s.admissionNo.toLowerCase() === activeAdmNo.toLowerCase()
   ) || students[0];
@@ -46,6 +52,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     (r) => r.studentId === student?.id || r.admissionNo === student?.admissionNo
   );
 
+  const [showActivationForm, setShowActivationForm] = useState(true);
   const isActivated = Boolean(student?.hasActivatedScratchCard);
 
   const handleActivate = async (e: React.FormEvent) => {
@@ -56,6 +63,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       await onActivateScratchCard(activeAdmNo, pinInput);
       confetti({ particleCount: 70, spread: 90 });
       setPinInput('');
+      setShowActivationForm(false);
     } catch (err: any) {
       setActivationError(err.message || 'Activation failed. Please check your 12-digit PIN.');
     } finally {
@@ -89,38 +97,47 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </p>
         </div>
 
-        {/* Admission No Switcher (Convenient for testing other students) */}
-        <div className="flex items-center gap-2 self-start md:self-auto bg-white/10 p-2 rounded-lg border border-white/20 text-xs">
-          <span className="text-emerald-200">View as Student:</span>
-          <select
-            value={activeAdmNo}
-            onChange={(e) => setActiveAdmNo(e.target.value)}
-            className="bg-[#06331c] text-white px-2 py-1 rounded border border-emerald-600 focus:outline-none font-mono"
-          >
-            {students.map((s) => (
-              <option key={s.id} value={s.admissionNo}>
-                {s.firstName} {s.lastName} ({s.admissionNo})
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Admission No Badge / Switcher */}
+        {!currentStudentAdmissionNo && (
+          <div className="flex items-center gap-2 self-start md:self-auto bg-white/10 p-2 rounded-lg border border-white/20 text-xs">
+            <span className="text-emerald-200">View as Student:</span>
+            <select
+              value={activeAdmNo}
+              onChange={(e) => setActiveAdmNo(e.target.value)}
+              className="bg-[#06331c] text-white px-2 py-1 rounded border border-emerald-600 focus:outline-none font-mono"
+            >
+              {students.map((s) => (
+                <option key={s.id} value={s.admissionNo}>
+                  {s.firstName} {s.lastName} ({s.admissionNo})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      {/* SCRATCH CARD ACTIVATION BANNER IF NOT YET ACTIVATED */}
-      {!isActivated ? (
-        <div className="bg-white rounded-2xl border-2 border-amber-300 p-6 shadow-sm space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-              <Lock className="w-6 h-6 text-amber-700" />
+      {/* SCRATCH CARD ACTIVATION PORTION (Shown to logged-in students) */}
+      {(!isActivated || showActivationForm) && (
+        <div className="bg-white rounded-2xl border-2 border-amber-300 p-6 shadow-sm space-y-4 print:hidden">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <CreditCard className="w-6 h-6 text-amber-700" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-stone-900">
+                  Activate Your Scratch Card PIN
+                </h3>
+                <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Enter your official 12-digit scratch card PIN below to activate your scratch card and unlock your terminal continuous assessment and examination report card.
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-base font-bold text-stone-900">
-                Official Result Protected — Scratch Card Required
-              </h3>
-              <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-                As per GSTC examination guidelines, terminal continuous assessments and examination report cards require activation using an authorized 12-digit scratch card PIN.
-              </p>
-            </div>
+            {isActivated && (
+              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-300 shrink-0">
+                Card Active ({student?.activatedScratchCardPin || 'Verified'})
+              </span>
+            )}
           </div>
 
           <form onSubmit={handleActivate} className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
@@ -144,7 +161,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. 8392-4910-5821"
+                  placeholder="XXXX-XXXX-XXXX"
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-white border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] font-mono tracking-widest font-bold"
@@ -159,14 +176,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
-              <div className="text-[11px] text-stone-500">
-                Available demo scratch card PIN in system: <code className="text-[#0b4d2c] font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">1092-3847-9201</code> or <code className="text-[#0b4d2c] font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">5542-8819-3012</code>
-              </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="submit"
                 disabled={activating}
-                className="px-5 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 shrink-0"
+                className="px-5 py-2.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 shrink-0"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>{activating ? 'Verifying PIN...' : 'Activate Scratch Card & Unlock Result'}</span>
@@ -174,22 +188,33 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
           </form>
         </div>
-      ) : (
-        /* ACTIVATED BADGE */
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900">
+      )}
+
+      {isActivated && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 print:hidden">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-700" />
             <span>
-              Scratch Card Activated for Admission No: <strong className="font-mono">{student?.admissionNo}</strong>. Full terminal report is unlocked for viewing and printing.
+              Scratch Card Activated for Admission No: <strong className="font-mono">{student?.admissionNo}</strong>. Full terminal report is unlocked below.
             </span>
           </div>
-          <button
-            onClick={handlePrint}
-            className="px-3.5 py-1.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 print:hidden"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print Official Result</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {!showActivationForm && (
+              <button
+                onClick={() => setShowActivationForm(true)}
+                className="px-3 py-1.5 bg-white hover:bg-stone-50 text-emerald-800 border border-emerald-300 font-semibold rounded-lg"
+              >
+                Enter Another Scratch Card PIN
+              </button>
+            )}
+            <button
+              onClick={handlePrint}
+              className="px-3.5 py-1.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print Official Result</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -205,7 +230,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               Government Science & Technical College, Garki
             </h3>
             <p className="text-xs text-stone-600">
-              Area 10, Garki, Abuja FCT • Motto: Knowledge, Skill, and Self Reliance
+              Area 3 Garki, Abuja FCT • Motto: Knowledge, Skill, and Self Reliance
             </p>
             <span className="inline-block mt-2 px-3 py-1 bg-emerald-100 text-emerald-900 font-bold text-xs rounded-full border border-emerald-300">
               OFFICIAL CONTINUOUS ASSESSMENT & EXAMINATION REPORT SHEET

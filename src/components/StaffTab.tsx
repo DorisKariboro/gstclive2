@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Staff } from '../types/school';
-import { UserCheck, Search, Trash2, Mail, Phone, Briefcase } from 'lucide-react';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { UserCheck, Search, Trash2, Edit2, Mail, Phone, Briefcase } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface StaffTabProps {
   staff: Staff[];
   onAddStaff: (data: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Staff>;
+  onUpdateStaff?: (id: string, updates: Partial<Staff>) => Promise<void>;
   onDeleteStaff: (id: string) => Promise<void>;
   showRegisterModalDefault?: boolean;
 }
@@ -13,11 +15,14 @@ interface StaffTabProps {
 export const StaffTab: React.FC<StaffTabProps> = ({
   staff,
   onAddStaff,
+  onUpdateStaff,
   onDeleteStaff,
   showRegisterModalDefault = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(showRegisterModalDefault);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -36,25 +41,71 @@ export const StaffTab: React.FC<StaffTabProps> = ({
     );
   });
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditingStaff(null);
+    setFullName('');
+    setEmail('');
+    setPhone('');
+    setRole('Teacher');
+    setAssignedClasses('CCS 1');
+    setSubjects('Computer Craft Studies');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (stf: Staff) => {
+    setEditingStaff(stf);
+    setFullName(stf.fullName);
+    setEmail(stf.email);
+    setPhone(stf.phone);
+    setRole(stf.role);
+    setAssignedClasses(stf.assignedClasses?.join(', ') || '');
+    setSubjects(stf.subjects?.join(', ') || '');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const staffNum = (staff.length + 1).toString().padStart(3, '0');
-      const staffId = `GSTC/STF/${staffNum}`;
+      if (editingStaff && onUpdateStaff) {
+        await onUpdateStaff(editingStaff.id, {
+          fullName,
+          email: email || editingStaff.email,
+          phone: phone || editingStaff.phone,
+          role,
+          assignedClasses: assignedClasses
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+          subjects: subjects
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        });
+      } else {
+        const staffNum = (staff.length + 1).toString().padStart(3, '0');
+        const staffId = `GSTC/STF/${staffNum}`;
 
-      await onAddStaff({
-        staffId,
-        fullName,
-        email: email || `${fullName.toLowerCase().replace(/\s+/g, '.')}@gstcgarki.edu.ng`,
-        phone: phone || '+234 803 000 0000',
-        role,
-        assignedClasses: assignedClasses.split(',').map((s) => s.trim()),
-        subjects: subjects.split(',').map((s) => s.trim()),
-        status: 'Active'
-      });
+        await onAddStaff({
+          staffId,
+          fullName,
+          email: email || `${fullName.toLowerCase().replace(/\s+/g, '.')}@gstcgarki.edu.ng`,
+          phone: phone || '+234 803 000 0000',
+          role,
+          assignedClasses: assignedClasses
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+          subjects: subjects
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+          status: 'Active'
+        });
+      }
 
       confetti({ particleCount: 40, spread: 60 });
+      setEditingStaff(null);
       setFullName('');
       setEmail('');
       setPhone('');
@@ -72,12 +123,12 @@ export const StaffTab: React.FC<StaffTabProps> = ({
         <div>
           <h2 className="text-base font-bold text-stone-900">Academic & Non-Academic Staff ({staff.length})</h2>
           <p className="text-xs text-stone-500">
-            Teaching staff, form masters and department heads with auto-generated GSTC/STF numbers
+            Add, edit, or remove teaching staff, form masters and department heads
           </p>
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={openAddModal}
           className="px-3.5 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-1.5"
         >
           <UserCheck className="w-4 h-4" />
@@ -114,17 +165,24 @@ export const StaffTab: React.FC<StaffTabProps> = ({
                   <Briefcase className="w-3.5 h-3.5 text-stone-400" /> {stf.role}
                 </span>
               </div>
-              <button
-                onClick={() => {
-                  if (confirm(`Remove staff ${stf.fullName}?`)) {
-                    onDeleteStaff(stf.id);
-                  }
-                }}
-                className="text-stone-300 hover:text-red-600 transition p-1"
-                title="Delete staff"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => openEditModal(stf)}
+                  className="text-stone-400 hover:text-[#0b4d2c] transition p-1 cursor-pointer"
+                  title="Edit staff"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStaffToDelete(stf)}
+                  className="text-stone-400 hover:text-red-600 transition p-1 cursor-pointer"
+                  title="Delete staff"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="pt-2 border-t border-stone-100 text-xs text-stone-600 space-y-1.5">
@@ -160,21 +218,27 @@ export const StaffTab: React.FC<StaffTabProps> = ({
         ))}
       </div>
 
-      {/* Staff Registration Modal */}
+      {/* Staff Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200">
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <h3 className="font-bold text-base text-stone-900 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-[#0b4d2c]" />
-                Register Staff • Auto-assign GSTC/STF ID
+                {editingStaff ? `Edit Staff • ${editingStaff.staffId}` : 'Register Staff • Auto-assign GSTC/STF ID'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingStaff(null);
+                }}
+                className="text-stone-400 hover:text-stone-600"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleRegister} className="space-y-3.5 mt-4">
+            <form onSubmit={handleSaveStaff} className="space-y-3.5 mt-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">Full Name & Title</label>
                 <input
@@ -251,7 +315,10 @@ export const StaffTab: React.FC<StaffTabProps> = ({
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingStaff(null);
+                  }}
                   className="px-3.5 py-2 text-xs font-medium text-stone-600 hover:text-stone-800"
                 >
                   Cancel
@@ -261,13 +328,31 @@ export const StaffTab: React.FC<StaffTabProps> = ({
                   disabled={submitting}
                   className="px-4 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-bold rounded-lg shadow-sm"
                 >
-                  {submitting ? 'Creating...' : 'Register to School Firestore'}
+                  {submitting ? 'Saving...' : editingStaff ? 'Update Staff Record' : 'Register Staff Member'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(staffToDelete)}
+        title="Delete Staff Account"
+        message={
+          staffToDelete
+            ? `Are you sure you want to permanently remove staff member "${staffToDelete.fullName}" (${staffToDelete.staffId}) from the system?`
+            : ''
+        }
+        confirmLabel="Yes, Remove Staff"
+        onConfirm={async () => {
+          if (staffToDelete) {
+            await onDeleteStaff(staffToDelete.id);
+            setStaffToDelete(null);
+          }
+        }}
+        onCancel={() => setStaffToDelete(null)}
+      />
     </div>
   );
 };

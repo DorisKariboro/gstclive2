@@ -166,7 +166,13 @@ export function useSchoolData() {
       doc(db, 'settings', 'global_config'),
       (snap) => {
         if (snap.exists()) {
-          setSettings(snap.data() as SchoolSettings);
+          const data = snap.data() as SchoolSettings;
+          setSettings({
+            ...data,
+            address: data.address
+              ? data.address.replace(/Area\s*10,?\s*/gi, 'Area 3 ')
+              : 'Garki Area 3, Abuja FCT, Nigeria'
+          });
         }
       },
       (err) => console.error('Settings sync error:', err)
@@ -189,20 +195,30 @@ export function useSchoolData() {
       doc(db, 'website_customization', 'main'),
       (snap) => {
         if (snap.exists()) {
-          setCustomization(snap.data() as WebsiteCustomization);
+          const data = snap.data() as WebsiteCustomization;
+          setCustomization({
+            ...data,
+            schoolAddress: data.schoolAddress
+              ? data.schoolAddress.replace(/Area\s*10,?\s*/gi, 'Area 3 ')
+              : 'Garki Area 3, Abuja Federal Capital Territory, Nigeria',
+            principalWelcomeMessage: data.principalWelcomeMessage
+              ? data.principalWelcomeMessage.replace(/Area\s*10,?\s*/gi, 'Area 3 ')
+              : 'Welcome to Government Science & Technical College Garki, Area 3 Abuja. Together with our wonderful team of high-performing administrative and academic staff, we are committed to practical excellence, technological innovation, and self-reliance across all 9 NABTEB-accredited trades.'
+          });
         } else {
           setCustomization({
             heroTagline: 'Empowering Future Innovators & Technical Leaders',
             heroAnnouncement: 'Admissions for 2026/2027 Academic Session are now open.',
-            principalWelcomeMessage: 'Welcome to Government Science & Technical College Garki.',
+            principalWelcomeMessage:
+              'Welcome to Government Science & Technical College Garki, Area 3 Abuja. Together with our wonderful team of high-performing administrative and academic staff, we are committed to practical excellence, technological innovation, and self-reliance across all 9 NABTEB-accredited trades.',
             schoolContactEmail: 'info@gstcgarki.edu.ng',
             schoolPhone: '+234 9 291 0000',
-            schoolAddress: 'Area 10, Garki, Abuja FCT, Nigeria',
+            schoolAddress: 'Garki Area 3, Abuja FCT, Nigeria',
             bannerNoticeText: 'Academic Session 2025/2026 First Term ongoing.',
             bannerNoticeActive: true,
             primaryAccentColor: '#0b4d2c',
             updatedAt: Date.now(),
-            updatedBy: 'Principal Super Admin'
+            updatedBy: 'Super Admin'
           });
         }
         setLoading(false);
@@ -237,11 +253,13 @@ export function useSchoolData() {
       id: newDocRef.id,
       createdAt: Date.now()
     };
+    setAdmins((prev) => [newAdmin, ...prev.filter((a) => a.id !== newAdmin.id)]);
     await setDoc(newDocRef, newAdmin);
     return newAdmin;
   };
 
   const removeAdmin = async (adminId: string) => {
+    setAdmins((prev) => prev.filter((a) => a.id !== adminId));
     await deleteDoc(doc(db, 'admins', adminId));
   };
 
@@ -251,7 +269,7 @@ export function useSchoolData() {
       {
         ...updates,
         updatedAt: Date.now(),
-        updatedBy: 'Principal Super Admin'
+        updatedBy: 'Super Admin'
       },
       { merge: true }
     );
@@ -295,7 +313,13 @@ export function useSchoolData() {
     return newsItem;
   };
 
+  const updateNews = async (id: string, updates: Partial<SchoolNews>) => {
+    setNews((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
+    await updateDoc(doc(db, 'school_news', id), updates);
+  };
+
   const deleteNews = async (id: string) => {
+    setNews((prev) => prev.filter((n) => n.id !== id));
     await deleteDoc(doc(db, 'school_news', id));
   };
 
@@ -319,6 +343,7 @@ export function useSchoolData() {
   };
 
   const updateStaff = async (id: string, updates: Partial<Staff>) => {
+    setStaff((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates, updatedAt: Date.now() } : s)));
     await updateDoc(doc(db, 'staff', id), {
       ...updates,
       updatedAt: Date.now()
@@ -332,6 +357,7 @@ export function useSchoolData() {
   };
 
   const deleteStaff = async (id: string) => {
+    setStaff((prev) => prev.filter((s) => s.id !== id));
     await deleteDoc(doc(db, 'staff', id));
   };
 
@@ -341,12 +367,28 @@ export function useSchoolData() {
   };
 
   const updateClass = async (id: string, updates: Partial<SchoolClass>) => {
+    setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
     await updateDoc(doc(db, 'classes', id), updates);
+  };
+
+  const deleteClass = async (id: string) => {
+    setClasses((prev) => prev.filter((c) => c.id !== id));
+    await deleteDoc(doc(db, 'classes', id));
   };
 
   const addSubject = async (subjectData: Omit<Subject, 'id'>) => {
     const newDocRef = doc(collection(db, 'subjects'));
     await setDoc(newDocRef, { ...subjectData, id: newDocRef.id });
+  };
+
+  const updateSubject = async (id: string, updates: Partial<Subject>) => {
+    setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+    await updateDoc(doc(db, 'subjects', id), updates);
+  };
+
+  const deleteSubject = async (id: string) => {
+    setSubjects((prev) => prev.filter((s) => s.id !== id));
+    await deleteDoc(doc(db, 'subjects', id));
   };
 
   const assignAllSubjectsToAllClasses = async () => {
@@ -408,6 +450,7 @@ export function useSchoolData() {
   };
 
   const deleteAssignment = async (id: string) => {
+    setAssignments((prev) => prev.filter((a) => a.id !== id));
     await deleteDoc(doc(db, 'assignments', id));
   };
 
@@ -432,7 +475,18 @@ export function useSchoolData() {
     return student;
   };
 
+  const updateStudent = async (studentId: string, updates: Partial<Student>) => {
+    setStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, ...updates, updatedAt: Date.now() } : s))
+    );
+    await updateDoc(doc(db, 'students', studentId), {
+      ...updates,
+      updatedAt: Date.now()
+    });
+  };
+
   const deenrollStudent = async (studentId: string) => {
+    setStudents((prev) => prev.filter((s) => s.id !== studentId));
     await deleteDoc(doc(db, 'students', studentId));
   };
 
@@ -589,20 +643,25 @@ export function useSchoolData() {
     updateWebsiteCustomization,
     // Admin
     postNews,
+    updateNews,
     deleteNews,
     addStaff,
     updateStaff,
     deleteStaff,
     addClass,
     updateClass,
+    deleteClass,
     addSubject,
+    updateSubject,
+    deleteSubject,
     assignAllSubjectsToAllClasses,
     assignSubjectToTeacher,
     deleteAssignment,
     updateSettings,
     updateNotice,
-    // Teacher
+    // Teacher & Student Management
     enrollStudent,
+    updateStudent,
     deenrollStudent,
     saveStudentScore,
     // Student

@@ -26,6 +26,17 @@ import {
 
 const DEFAULT_ADMINS: AdminAccount[] = [
   {
+    id: 'admin-super-2',
+    username: 'SuperAdmin2',
+    fullName: 'Executive Super Admin',
+    email: 'superadmin2@gstcgarki.edu.ng',
+    password: '0000',
+    role: 'super_admin',
+    isPrincipalSuperAdmin: false,
+    assignedOffice: 'Executive Portal Administration',
+    createdAt: Date.now() - 12000000
+  },
+  {
     id: 'admin-01',
     username: 'admin_usman',
     fullName: 'Alh. Usman Mohammed',
@@ -224,7 +235,7 @@ const DEFAULT_RESULTS: ExamResult[] = [
 const DEFAULT_SETTINGS: SchoolSettings = {
   schoolName: 'Govt. Science & Tech. College, Garki',
   motto: 'Knowledge, Skill, and Self Reliance',
-  address: 'Area 10, Garki, Abuja FCT, Nigeria',
+  address: 'Area 3 Garki, Abuja FCT, Nigeria',
   session: '2025/2026',
   term: 'First Term',
   ca1Max: 10,
@@ -243,24 +254,24 @@ const DEFAULT_SETTINGS: SchoolSettings = {
 
 const DEFAULT_CUSTOMIZATION: WebsiteCustomization = {
   heroTagline: 'Empowering Future Innovators & Technical Leaders',
-  heroAnnouncement: 'Admissions for 2026/2027 Academic Session are now open for Science, Craft, and Vocational Programs.',
-  principalWelcomeMessage: 'Welcome to Government Science & Technical College Garki. We are committed to fostering practical excellence, technological innovation, and self-reliance among our students.',
+  heroAnnouncement: 'Admissions for 2026/2027 Academic Session are now open for Science, Craft, and 9 Accredited Vocational Trades.',
+  principalWelcomeMessage: 'Welcome to Government Science & Technical College Garki, Area 3 Abuja. Together with our wonderful team of high-performing administrative and academic staff, we are committed to fostering practical excellence, technological innovation, and self-reliance across all 9 NABTEB-accredited trades.',
   schoolContactEmail: 'info@gstcgarki.edu.ng',
   schoolPhone: '+234 9 291 0000',
-  schoolAddress: 'Area 10, Garki, Abuja Federal Capital Territory, Nigeria',
+  schoolAddress: 'Area 3 Garki, Abuja Federal Capital Territory, Nigeria',
   bannerNoticeText: 'Academic Session 2025/2026 First Term continuous assessment marks submission deadline is approaching.',
   bannerNoticeActive: true,
   primaryAccentColor: '#0b4d2c',
   updatedAt: Date.now(),
-  updatedBy: 'Principal Super Admin'
+  updatedBy: 'Dr. James Musa Kuta (Principal Super Admin)'
 };
 
 const DEFAULT_NEWS: SchoolNews[] = [
   {
     id: 'news-01',
     title: 'GSTC Robotics & Computer Craft Team Wins FCT Innovation Showcase',
-    summary: 'Our Computer Craft Studies department demonstrated automated solar controllers developed entirely in our technical workshops.',
-    content: 'Students of the Computer Craft Studies and Electrical Maintenance arms represented GSTC Garki at the annual FCT Science Fair, securing top honours for automated renewable energy circuits.',
+    summary: 'Our outstanding Robotics Club and Computer Craft Studies department demonstrated automated solar controllers developed entirely in our technical workshops.',
+    content: 'Students of the Robotics Club, Computer Craft Studies, and Electrical Maintenance arms represented GSTC Garki (Area 3, Abuja) at the annual FCT Science Fair, securing top honours for automated renewable energy circuits under the result-oriented leadership of Principal Dr. James Musa Kuta.',
     category: 'Technical Workshop',
     authorName: 'Alh. Usman Mohammed',
     authorRole: 'Admin (Academic Records)',
@@ -282,10 +293,16 @@ const DEFAULT_NEWS: SchoolNews[] = [
 
 export async function seedInitialSchoolDataIfNeeded(): Promise<void> {
   try {
-    const metaDocRef = doc(db, 'system_meta', 'init_seed_v3');
+    const metaDocRef = doc(db, 'system_meta', 'init_seed_v6');
     const metaSnap = await getDoc(metaDocRef);
     if (metaSnap.exists()) {
       return;
+    }
+
+    // Ensure Second Super Admin exists in 'admins' collection
+    const secondSuperAdminDoc = await getDoc(doc(db, 'admins', 'admin-super-2'));
+    if (!secondSuperAdminDoc.exists()) {
+      await setDoc(doc(db, 'admins', 'admin-super-2'), DEFAULT_ADMINS[0]);
     }
 
     // Admins
@@ -352,7 +369,7 @@ export async function seedInitialSchoolDataIfNeeded(): Promise<void> {
       }
     }
 
-    // System Auth - Super Admin
+    // System Auth - Principal Super Admin & Second Super Admin
     const superAdminRef = doc(db, 'system_auth', 'super_admin');
     const superAdminSnap = await getDoc(superAdminRef);
     if (!superAdminSnap.exists()) {
@@ -362,6 +379,19 @@ export async function seedInitialSchoolDataIfNeeded(): Promise<void> {
         role: 'super_admin',
         fullName: 'Principal Super Admin',
         email: 'admin@gstcgarki.edu.ng',
+        updatedAt: Date.now()
+      });
+    }
+
+    const secondSuperRef = doc(db, 'system_auth', 'second_super_admin');
+    const secondSuperSnap = await getDoc(secondSuperRef);
+    if (!secondSuperSnap.exists()) {
+      await setDoc(secondSuperRef, {
+        username: 'SuperAdmin2',
+        password: '0000',
+        role: 'super_admin',
+        fullName: 'Executive Super Admin',
+        email: 'superadmin2@gstcgarki.edu.ng',
         updatedAt: Date.now()
       });
     }

@@ -313,7 +313,7 @@ export const ScratchCardsAndResults: React.FC<ScratchCardsAndResultsProps> = ({
                   <h4 className="text-base font-extrabold text-[#0b4d2c] uppercase tracking-wide">
                     Government Science & Technical College Garki
                   </h4>
-                  <p className="text-xs text-stone-600">Area 10, Garki, Abuja FCT • Official Terminal Report</p>
+                  <p className="text-xs text-stone-600">Area 3 Garki, Abuja FCT • Official Terminal Report</p>
                   <span className="inline-block mt-1 px-3 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full">
                     {foundResult.term} • {foundResult.session}
                   </span>

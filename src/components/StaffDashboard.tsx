@@ -8,6 +8,7 @@ import {
   ExamResult,
   SubjectScore
 } from '../types/school';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import {
   GraduationCap,
   UserCheck,
@@ -87,6 +88,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
   // Enrollment form state
   const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [studentToDeenroll, setStudentToDeenroll] = useState<Student | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
@@ -457,12 +459,9 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                           {score.saving ? 'Saving...' : score.saved ? 'Saved ✓' : 'Save Score'}
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`De-enroll ${std.firstName} ${std.lastName} from ${selectedClass?.name}?`)) {
-                              onDeenrollStudent(std.id);
-                            }
-                          }}
-                          className="px-2 py-1 text-stone-400 hover:text-red-600 rounded"
+                          type="button"
+                          onClick={() => setStudentToDeenroll(std)}
+                          className="px-2 py-1 text-stone-400 hover:text-red-600 rounded cursor-pointer"
                           title="De-enroll student"
                         >
                           <UserMinus className="w-3.5 h-3.5 inline" />
@@ -564,6 +563,24 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(studentToDeenroll)}
+        title="De-enroll & Remove Student"
+        message={
+          studentToDeenroll
+            ? `Are you sure you want to de-enroll and remove "${studentToDeenroll.firstName} ${studentToDeenroll.lastName}" (${studentToDeenroll.admissionNo}) from ${selectedClass?.name || 'this class'}?`
+            : ''
+        }
+        confirmLabel="Yes, De-enroll Student"
+        onConfirm={async () => {
+          if (studentToDeenroll) {
+            await onDeenrollStudent(studentToDeenroll.id);
+            setStudentToDeenroll(null);
+          }
+        }}
+        onCancel={() => setStudentToDeenroll(null)}
+      />
     </div>
   );
 };

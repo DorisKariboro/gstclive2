@@ -6,7 +6,8 @@ export interface AdminAccount {
   fullName: string;
   email: string;
   password: string; // stored for Super Admin management as requested
-  role: 'admin';
+  role: 'admin' | 'super_admin';
+  isPrincipalSuperAdmin?: boolean;
   assignedOffice?: string;
   createdAt: number;
 }

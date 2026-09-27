@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Student, SchoolClass } from '../types/school';
-import { UserPlus, Search, Trash2, Edit2, ShieldAlert, CheckCircle, RefreshCw } from 'lucide-react';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { UserPlus, Search, Trash2, Edit2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface StudentsTabProps {
@@ -23,6 +24,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('All');
   const [isModalOpen, setIsModalOpen] = useState(showRegisterModalDefault);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   // Form states
   const [firstName, setFirstName] = useState('');
@@ -43,29 +46,65 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     return matchesSearch && matchesClass;
   });
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditingStudent(null);
+    setFirstName('');
+    setLastName('');
+    setGender('Male');
+    setClassId(classes[0]?.id || '');
+    setGuardianName('');
+    setGuardianPhone('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (std: Student) => {
+    setEditingStudent(std);
+    setFirstName(std.firstName);
+    setLastName(std.lastName);
+    setGender(std.gender);
+    setClassId(std.classId || classes.find((c) => c.name === std.className)?.id || classes[0]?.id || '');
+    setGuardianName(std.guardianName || '');
+    setGuardianPhone(std.guardianPhone || '');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       const chosenClass = classes.find((c) => c.id === classId) || classes[0];
-      const admissionIndex = (students.length + 1).toString().padStart(3, '0');
-      const admissionNo = `GSTC/2026/${admissionIndex}`;
 
-      await onAddStudent({
-        admissionNo,
-        firstName,
-        lastName,
-        gender,
-        classId: chosenClass.id,
-        className: chosenClass.name,
-        term: 'First Term',
-        session: '2025/2026',
-        guardianName: guardianName || 'Guardian',
-        guardianPhone: guardianPhone || '+234 800 000 0000',
-        status: 'Active'
-      });
+      if (editingStudent) {
+        await onUpdateStudent(editingStudent.id, {
+          firstName,
+          lastName,
+          gender,
+          classId: chosenClass?.id || editingStudent.classId,
+          className: chosenClass?.name || editingStudent.className,
+          guardianName: guardianName || 'Guardian',
+          guardianPhone: guardianPhone || '+234 800 000 0000'
+        });
+      } else {
+        const admissionIndex = (students.length + 1).toString().padStart(3, '0');
+        const admissionNo = `GSTC/2026/${admissionIndex}`;
+
+        await onAddStudent({
+          admissionNo,
+          firstName,
+          lastName,
+          gender,
+          classId: chosenClass.id,
+          className: chosenClass.name,
+          term: 'First Term',
+          session: '2025/2026',
+          guardianName: guardianName || 'Guardian',
+          guardianPhone: guardianPhone || '+234 800 000 0000',
+          status: 'Active'
+        });
+      }
 
       confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+      setEditingStudent(null);
       setFirstName('');
       setLastName('');
       setGuardianName('');
@@ -85,13 +124,13 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         <div>
           <h2 className="text-base font-bold text-stone-900">Student Directory ({students.length})</h2>
           <p className="text-xs text-stone-500">
-            Real-time multi-device enrollment record synchronized via Cloud Firestore
+            Add, edit, or remove student enrollment records
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={openAddModal}
             className="px-3.5 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-1.5"
           >
             <UserPlus className="w-4 h-4" />
@@ -174,12 +213,17 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     </td>
                     <td className="py-3 px-4 text-right space-x-2">
                       <button
-                        onClick={() => {
-                          if (confirm(`Remove student ${std.firstName} ${std.lastName}?`)) {
-                            onDeleteStudent(std.id);
-                          }
-                        }}
-                        className="text-stone-400 hover:text-red-600 transition p-1"
+                        type="button"
+                        onClick={() => openEditModal(std)}
+                        className="text-stone-400 hover:text-[#0b4d2c] transition p-1 cursor-pointer"
+                        title="Edit student record"
+                      >
+                        <Edit2 className="w-4 h-4 inline" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStudentToDelete(std)}
+                        className="text-stone-400 hover:text-red-600 transition p-1 cursor-pointer"
                         title="Delete record"
                       >
                         <Trash2 className="w-4 h-4 inline" />
@@ -193,24 +237,27 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         </div>
       </div>
 
-      {/* Registration Modal */}
+      {/* Add / Edit Student Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200">
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <h3 className="font-bold text-base text-stone-900 flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-[#0b4d2c]" />
-                Register Student • GSTC Garki
+                {editingStudent ? `Edit Student • ${editingStudent.admissionNo}` : 'Register Student • GSTC Garki'}
               </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingStudent(null);
+                }}
                 className="text-stone-400 hover:text-stone-600"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleRegister} className="space-y-3.5 mt-4">
+            <form onSubmit={handleSaveStudent} className="space-y-3.5 mt-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">First Name</label>
@@ -290,7 +337,10 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingStudent(null);
+                  }}
                   className="px-3.5 py-2 text-xs font-medium text-stone-600 hover:text-stone-800"
                 >
                   Cancel
@@ -300,13 +350,31 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   disabled={submitting}
                   className="px-4 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-bold rounded-lg shadow-sm"
                 >
-                  {submitting ? 'Enrolling...' : 'Confirm & Save to Firestore'}
+                  {submitting ? 'Saving...' : editingStudent ? 'Update Student Record' : 'Register Student'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(studentToDelete)}
+        title="Delete Student Account & Record"
+        message={
+          studentToDelete
+            ? `Are you sure you want to permanently remove student "${studentToDelete.firstName} ${studentToDelete.lastName}" (${studentToDelete.admissionNo}) from the school registry?`
+            : ''
+        }
+        confirmLabel="Yes, Remove Student"
+        onConfirm={async () => {
+          if (studentToDelete) {
+            await onDeleteStudent(studentToDelete.id);
+            setStudentToDelete(null);
+          }
+        }}
+        onCancel={() => setStudentToDelete(null)}
+      />
     </div>
   );
 };

@@ -47,11 +47,12 @@ export const VisitorPortal: React.FC<VisitorPortalProps> = ({
     'Admissions for 2026/2027 Academic Session are currently open. Examination results for First Term now available via online scratch card activation.';
   const principalWelcome =
     customization?.principalWelcomeMessage ||
-    'Welcome to Government Science & Technical College (GSTC) Garki, Abuja. As a premier center for technical education in Nigeria\'s Federal Capital Territory, our mission is to blend rigorous scientific foundation with hands-on industrial skills.';
+    'Welcome to Government Science & Technical College (GSTC) Garki, Area 3 Abuja. As a premier center for technical education in Nigeria\'s Federal Capital Territory, our mission is to blend rigorous scientific foundation with hands-on industrial skills across our 9 accredited trades.';
   const schoolEmail = customization?.schoolContactEmail || 'admissions@gstcgarki.edu.ng';
   const schoolPhone = customization?.schoolPhone || '+234 9 291 0000';
   const schoolAddress =
-    customization?.schoolAddress || 'Area 10, Garki, Abuja Federal Capital Territory, Nigeria';
+    customization?.schoolAddress?.replace(/Area\s*10,?\s*/gi, 'Area 3 ') ||
+    'Garki Area 3, Abuja Federal Capital Territory, Nigeria';
   const bannerNoticeText =
     customization?.bannerNoticeText ||
     'Official Notice: Terminal examination continuous assessment marks are compiled and available through student portal scratch cards.';
@@ -103,12 +104,12 @@ export const VisitorPortal: React.FC<VisitorPortalProps> = ({
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-3">
-            {onNavigateToCheckResult && (
+            {onOpenAuth && (
               <button
-                onClick={onNavigateToCheckResult}
+                onClick={onOpenAuth}
                 className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs sm:text-sm shadow-md transition flex items-center gap-2 group"
               >
-                <span>Check Student Result</span>
+                <span>Login to Portal</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             )}
@@ -120,15 +121,6 @@ export const VisitorPortal: React.FC<VisitorPortalProps> = ({
               <Newspaper className="w-4 h-4 text-emerald-300" />
               <span>Read Latest News ({news.length})</span>
             </a>
-
-            {onOpenAuth && (
-              <button
-                onClick={onOpenAuth}
-                className="px-4 py-2.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/5 font-medium text-xs sm:text-sm transition"
-              >
-                Staff & Student Sign In →
-              </button>
-            )}
           </div>
         </div>
       </section>
@@ -138,19 +130,22 @@ export const VisitorPortal: React.FC<VisitorPortalProps> = ({
         <div className="lg:col-span-2 bg-white rounded-xl border border-stone-200 p-6 sm:p-8 shadow-2xs space-y-4">
           <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold uppercase tracking-wider">
             <Award className="w-4 h-4 text-amber-600" />
-            <span>Principal\'s Desk</span>
+            <span>Principal&apos;s Desk</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold font-serif text-stone-900">
-            Welcome to GSTC Garki, Area 10 Abuja
+            Welcome to GSTC Garki, Area 3 Abuja
           </h2>
           <div className="relative pl-4 border-l-2 border-emerald-600 text-stone-700 text-sm leading-relaxed italic">
             "{principalWelcome}"
           </div>
+          <p className="text-xs text-stone-600 leading-relaxed">
+            Led by our great and result-oriented Principal, <strong>Dr. James Musa Kuta</strong>, and a wonderful team of high-performing administrative and academic staff, GSTC Garki empowers students through our outstanding Robotics club with great records, modern workshops, and 9 NABTEB-accredited trades.
+          </p>
           <div className="pt-2 flex items-center gap-3">
             <SchoolBadge size="sm" />
             <div>
-              <p className="text-xs font-bold text-stone-900">Principal & Chief Executive</p>
-              <p className="text-[11px] text-stone-500">Government Science & Technical College, Garki</p>
+              <p className="text-xs font-bold text-stone-900">Dr. James Musa Kuta</p>
+              <p className="text-[11px] text-stone-500">Principal & Chief Executive • Government Science & Technical College, Area 3 Garki</p>
             </div>
           </div>
         </div>
@@ -161,16 +156,20 @@ export const VisitorPortal: React.FC<VisitorPortalProps> = ({
             <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">College Mandate</span>
             <h3 className="text-lg font-bold font-serif mt-1">Knowledge, Skill & Self Reliance</h3>
             <p className="text-stone-300 text-xs mt-2 leading-relaxed">
-              Equipping technical students with vocational mastery for modern industry, digital computing, and higher engineering pursuits.
+              Equipping technical students across 9 accredited trades with vocational mastery for modern industry, robotics, digital computing, and higher engineering pursuits.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-stone-800 text-center">
-            <div className="bg-stone-800/80 p-3 rounded-lg border border-stone-700">
-              <span className="text-xl font-black font-mono text-amber-300">100%</span>
-              <p className="text-[10px] text-stone-400 uppercase mt-0.5">Practical Workshops</p>
+          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-stone-800 text-center">
+            <div className="bg-stone-800/80 p-2.5 rounded-lg border border-stone-700">
+              <span className="text-xl font-black font-mono text-amber-400">9</span>
+              <p className="text-[10px] text-stone-400 uppercase mt-0.5">Accredited Trades</p>
             </div>
-            <div className="bg-stone-800/80 p-3 rounded-lg border border-stone-700">
+            <div className="bg-stone-800/80 p-2.5 rounded-lg border border-stone-700">
+              <span className="text-xl font-black font-mono text-amber-300">100%</span>
+              <p className="text-[10px] text-stone-400 uppercase mt-0.5">Practical Labs</p>
+            </div>
+            <div className="bg-stone-800/80 p-2.5 rounded-lg border border-stone-700">
               <span className="text-xl font-black font-mono text-emerald-400">NABTEB</span>
               <p className="text-[10px] text-stone-400 uppercase mt-0.5">Certified Center</p>
             </div>

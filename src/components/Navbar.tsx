@@ -41,13 +41,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       return [
         { id: 'home', label: 'Home Page', icon: Home },
         { id: 'public_portal', label: 'School News', icon: Newspaper },
-        { id: 'results', label: 'Check Result', icon: GraduationCap }
+        { id: 'login', label: 'Portal Login', icon: KeyRound }
       ];
     }
     if (currentRole === 'super_admin') {
       return [
         { id: 'home', label: 'Home Page', icon: Home },
         { id: 'super_admin', label: 'Super Admin Dashboard' },
+        { id: 'admin_panel', label: 'Admin Operations' },
         { id: 'website_manager', label: 'Website Customization' },
         { id: 'scratch_cards', label: 'Scratch Cards' },
         { id: 'students', label: 'Students' },
@@ -118,29 +119,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
             <p className="text-[11px] sm:text-[12px] text-emerald-200 mt-0.5 font-normal tracking-wide">
-              Govt. Science & Tech. College • Area 10, Abuja
+              Govt. Science & Tech. College • Area 3 Garki, Abuja
             </p>
           </div>
         </div>
 
         {/* Live sync badge & controls */}
         <div className="flex items-center gap-2 sm:gap-2.5 text-xs">
-          {/* Real-time sync indicator */}
-          <div
-            title={`Connected to Firestore. Last sync: ${lastSyncTime.toLocaleTimeString()}`}
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-white/10 rounded-full border border-white/15 text-[11px] text-emerald-100"
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                syncStatus === 'connected'
-                  ? 'bg-emerald-400 animate-pulse'
-                  : syncStatus === 'syncing'
-                  ? 'bg-amber-400 animate-spin'
-                  : 'bg-red-400'
-              }`}
-            />
-            <span>{syncStatus === 'connected' ? 'Firestore Live Sync' : 'Connecting...'}</span>
-          </div>
+          {/* Real-time sync indicator (Restricted to Super Admin only) */}
+          {currentRole === 'super_admin' && (
+            <div
+              title={`Connected to Firestore. Last sync: ${lastSyncTime.toLocaleTimeString()}`}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-white/10 rounded-full border border-white/15 text-[11px] text-emerald-100"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  syncStatus === 'connected'
+                    ? 'bg-emerald-400 animate-pulse'
+                    : syncStatus === 'syncing'
+                    ? 'bg-amber-400 animate-spin'
+                    : 'bg-red-400'
+                }`}
+              />
+              <span>{syncStatus === 'connected' ? 'Firestore Live Sync' : 'Connecting...'}</span>
+            </div>
+          )}
 
           {/* GitHub / Vercel Readiness Button */}
           <button
