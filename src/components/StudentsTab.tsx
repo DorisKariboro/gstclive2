@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Student, SchoolClass } from '../types/school';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
-import { UserPlus, Search, Trash2, Edit2 } from 'lucide-react';
+import { UserPlus, Search, Trash2, Edit2, Eye, EyeOff, Copy, Check, Key } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface StudentsTabProps {
@@ -26,6 +26,9 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(showRegisterModalDefault);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<{ [id: string]: boolean }>({});
+  const [showAllPasswords, setShowAllPasswords] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form states
   const [firstName, setFirstName] = useState('');
@@ -34,7 +37,18 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   const [classId, setClassId] = useState(classes[0]?.id || 'class-ccs1');
   const [guardianName, setGuardianName] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('');
+  const [password, setPassword] = useState('0000');
   const [submitting, setSubmitting] = useState(false);
+
+  const togglePasswordVisibility = (id: string) => {
+    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // Filter students
   const filteredStudents = students.filter((s) => {
@@ -54,6 +68,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setClassId(classes[0]?.id || '');
     setGuardianName('');
     setGuardianPhone('');
+    setPassword('0000');
     setIsModalOpen(true);
   };
 
@@ -65,6 +80,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
     setClassId(std.classId || classes.find((c) => c.name === std.className)?.id || classes[0]?.id || '');
     setGuardianName(std.guardianName || '');
     setGuardianPhone(std.guardianPhone || '');
+    setPassword(std.password || '0000');
     setIsModalOpen(true);
   };
 
@@ -82,7 +98,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           classId: chosenClass?.id || editingStudent.classId,
           className: chosenClass?.name || editingStudent.className,
           guardianName: guardianName || 'Guardian',
-          guardianPhone: guardianPhone || '+234 800 000 0000'
+          guardianPhone: guardianPhone || '+234 800 000 0000',
+          password: password.trim() || '0000'
         });
       } else {
         const admissionIndex = (students.length + 1).toString().padStart(3, '0');
@@ -90,6 +107,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
         await onAddStudent({
           admissionNo,
+          password: password.trim() || '0000',
           firstName,
           lastName,
           gender,
@@ -109,6 +127,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       setLastName('');
       setGuardianName('');
       setGuardianPhone('');
+      setPassword('0000');
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -129,6 +148,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAllPasswords((prev) => !prev)}
+            className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg border border-stone-300 transition flex items-center gap-1.5"
+          >
+            {showAllPasswords ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            <span>{showAllPasswords ? 'Hide Passwords' : 'Show All Passwords'}</span>
+          </button>
           <button
             onClick={openAddModal}
             className="px-3.5 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-1.5"
@@ -173,11 +200,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           <table className="w-full text-left text-xs text-stone-600">
             <thead className="bg-stone-50 border-b border-stone-200 text-stone-700 font-semibold uppercase tracking-wider text-[11px]">
               <tr>
-                <th className="py-3 px-4">Admission No</th>
+                <th className="py-3 px-4">Login ID (Adm No)</th>
                 <th className="py-3 px-4">Student Name</th>
+                <th className="py-3 px-4">Login Password</th>
                 <th className="py-3 px-4">Class</th>
                 <th className="py-3 px-4">Gender</th>
-                <th className="py-3 px-4">Session / Term</th>
                 <th className="py-3 px-4">Guardian Contact</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -190,13 +217,57 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredStudents.map((std) => (
+                filteredStudents.map((std) => {
+                  const stdPass = std.password || '0000';
+                  const isPassVisible = showAllPasswords || visiblePasswords[std.id];
+                  return (
                   <tr key={std.id} className="hover:bg-emerald-50/40 transition">
-                    <td className="py-3 px-4 font-mono font-bold text-[#0b4d2c]">
-                      {std.admissionNo}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-[#0b4d2c]">{std.admissionNo}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(std.admissionNo, `adm-${std.id}`)}
+                          className="text-stone-400 hover:text-stone-700 p-0.5"
+                          title="Copy Login ID"
+                        >
+                          {copiedId === `adm-${std.id}` ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3 px-4 font-medium text-stone-900">
                       {std.firstName} {std.lastName}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-[#0b4d2c] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {isPassVisible ? stdPass : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => togglePasswordVisibility(std.id)}
+                          className="text-stone-400 hover:text-stone-700 p-1"
+                          title={isPassVisible ? 'Hide Password' : 'Show Password'}
+                        >
+                          {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(stdPass, `pass-${std.id}`)}
+                          className="text-stone-400 hover:text-stone-700 p-1"
+                          title="Copy Password"
+                        >
+                          {copiedId === `pass-${std.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200 font-medium text-stone-700">
@@ -204,9 +275,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-4">{std.gender}</td>
-                    <td className="py-3 px-4 text-stone-500">
-                      {std.session} • {std.term}
-                    </td>
                     <td className="py-3 px-4 text-stone-500">
                       <div>{std.guardianName || '—'}</div>
                       <div className="text-[10px] text-stone-400 font-mono">{std.guardianPhone}</div>
@@ -230,7 +298,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                       </button>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -332,6 +401,20 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Student Portal Login Password
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Default: 0000"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none bg-emerald-50/40"
+                />
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

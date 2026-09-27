@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Staff } from '../types/school';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
-import { UserCheck, Search, Trash2, Edit2, Mail, Phone, Briefcase } from 'lucide-react';
+import { UserCheck, Search, Trash2, Edit2, Mail, Phone, Briefcase, Eye, EyeOff, Copy, Check, Key } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface StaffTabProps {
@@ -23,15 +23,29 @@ export const StaffTab: React.FC<StaffTabProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(showRegisterModalDefault);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<{ [id: string]: boolean }>({});
+  const [showAllPasswords, setShowAllPasswords] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('0000');
   const [role, setRole] = useState<Staff['role']>('Teacher');
   const [assignedClasses, setAssignedClasses] = useState('CCS 1');
   const [subjects, setSubjects] = useState('Computer Craft Studies');
   const [submitting, setSubmitting] = useState(false);
+
+  const togglePasswordVisibility = (id: string) => {
+    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const filteredStaff = staff.filter((s) => {
     return (
@@ -46,6 +60,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
     setFullName('');
     setEmail('');
     setPhone('');
+    setPassword('0000');
     setRole('Teacher');
     setAssignedClasses('CCS 1');
     setSubjects('Computer Craft Studies');
@@ -57,6 +72,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
     setFullName(stf.fullName);
     setEmail(stf.email);
     setPhone(stf.phone);
+    setPassword(stf.password || '0000');
     setRole(stf.role);
     setAssignedClasses(stf.assignedClasses?.join(', ') || '');
     setSubjects(stf.subjects?.join(', ') || '');
@@ -72,6 +88,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
           fullName,
           email: email || editingStaff.email,
           phone: phone || editingStaff.phone,
+          password: password.trim() || '0000',
           role,
           assignedClasses: assignedClasses
             .split(',')
@@ -88,6 +105,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
 
         await onAddStaff({
           staffId,
+          password: password.trim() || '0000',
           fullName,
           email: email || `${fullName.toLowerCase().replace(/\s+/g, '.')}@gstcgarki.edu.ng`,
           phone: phone || '+234 803 000 0000',
@@ -109,6 +127,7 @@ export const StaffTab: React.FC<StaffTabProps> = ({
       setFullName('');
       setEmail('');
       setPhone('');
+      setPassword('0000');
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -127,13 +146,23 @@ export const StaffTab: React.FC<StaffTabProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="px-3.5 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-1.5"
-        >
-          <UserCheck className="w-4 h-4" />
-          <span>Register Staff Member</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAllPasswords((prev) => !prev)}
+            className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg border border-stone-300 transition flex items-center gap-1.5"
+          >
+            {showAllPasswords ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            <span>{showAllPasswords ? 'Hide Passwords' : 'Show All Passwords'}</span>
+          </button>
+          <button
+            onClick={openAddModal}
+            className="px-3.5 py-2 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-1.5"
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Register Staff Member</span>
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -150,7 +179,10 @@ export const StaffTab: React.FC<StaffTabProps> = ({
 
       {/* Staff Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredStaff.map((stf) => (
+        {filteredStaff.map((stf) => {
+          const staffPass = stf.password || '0000';
+          const isPassVisible = showAllPasswords || visiblePasswords[stf.id];
+          return (
           <div
             key={stf.id}
             className="bg-white rounded-xl border border-stone-200 p-5 shadow-2xs hover:shadow-md transition space-y-3 relative group"
@@ -196,6 +228,50 @@ export const StaffTab: React.FC<StaffTabProps> = ({
               </div>
             </div>
 
+            {/* Teacher Login Credentials Box */}
+            <div className="p-2.5 bg-emerald-50/70 rounded-lg border border-emerald-200 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1">
+                  <Key className="w-3 h-3 text-emerald-700" /> Teacher Login Details
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(`Login ID: ${stf.staffId} | Password: ${staffPass}`, `all-${stf.id}`)}
+                  className="text-[10px] font-semibold text-[#0b4d2c] hover:underline flex items-center gap-1"
+                >
+                  {copiedId === `all-${stf.id}` ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-600" /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" /> Copy Login
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-stone-500">Login ID:</span>
+                <span className="font-mono font-bold text-stone-900">{stf.staffId}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-stone-500">Password:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-[#0b4d2c] bg-white px-2 py-0.5 rounded border border-emerald-200">
+                    {isPassVisible ? staffPass : '••••••••'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility(stf.id)}
+                    className="text-stone-500 hover:text-stone-800 p-0.5"
+                    title={isPassVisible ? 'Hide Password' : 'Show Password'}
+                  >
+                    {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="pt-2 border-t border-stone-100 flex flex-wrap gap-1">
               {stf.subjects?.map((sub, i) => (
                 <span
@@ -215,7 +291,8 @@ export const StaffTab: React.FC<StaffTabProps> = ({
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Staff Add / Edit Modal */}
@@ -309,6 +386,20 @@ export const StaffTab: React.FC<StaffTabProps> = ({
                   value={subjects}
                   onChange={(e) => setSubjects(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Teacher Portal Login Password
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Default: 0000"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none bg-emerald-50/40"
                 />
               </div>
 

@@ -15,6 +15,7 @@ export interface AdminAccount {
 export interface Student {
   id: string;
   admissionNo: string; // e.g. "GSTC/2026/014"
+  password?: string; // Student portal login password (default: "0000")
   firstName: string;
   lastName: string;
   gender: 'Male' | 'Female';
@@ -35,6 +36,7 @@ export interface Student {
 export interface Staff {
   id: string;
   staffId: string; // e.g. "GSTC/STF/008"
+  password?: string; // Teacher/Staff portal login password (default: "0000")
   fullName: string;
   email: string;
   phone: string;

@@ -72,7 +72,14 @@ export function useSchoolData() {
       collection(db, 'students'),
       (snap) => {
         const list: Student[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Student));
+        snap.forEach((d) => {
+          const data = d.data() as Student;
+          list.push({
+            ...data,
+            id: d.id,
+            password: data.password || '0000'
+          });
+        });
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         setStudents(list);
         setSyncStatus('connected');
@@ -86,7 +93,14 @@ export function useSchoolData() {
       collection(db, 'staff'),
       (snap) => {
         const list: Staff[] = [];
-        snap.forEach((d) => list.push({ ...d.data(), id: d.id } as Staff));
+        snap.forEach((d) => {
+          const data = d.data() as Staff;
+          list.push({
+            ...data,
+            id: d.id,
+            password: data.password || '0000'
+          });
+        });
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         setStaff(list);
         setSyncStatus('connected');
@@ -327,10 +341,12 @@ export function useSchoolData() {
     const newDocRef = doc(collection(db, 'staff'));
     const newStaff: Staff = {
       ...staffData,
+      password: staffData.password || '0000',
       id: newDocRef.id,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+    setStaff((prev) => [newStaff, ...prev.filter((s) => s.id !== newStaff.id)]);
     await setDoc(newDocRef, newStaff);
 
     if (staffData.isFormTeacher && staffData.formTeacherClassId) {
@@ -363,12 +379,49 @@ export function useSchoolData() {
 
   const addClass = async (classData: Omit<SchoolClass, 'id'>) => {
     const newDocRef = doc(collection(db, 'classes'));
-    await setDoc(newDocRef, { ...classData, id: newDocRef.id });
+    const matchedTeacher = staff.find(
+      (s) =>
+        s.id === classData.formTeacherId ||
+        s.fullName.toLowerCase() === (classData.formTeacherName || '').trim().toLowerCase()
+    );
+    const payload: SchoolClass = {
+      ...classData,
+      id: newDocRef.id,
+      formTeacherId: matchedTeacher?.id || classData.formTeacherId,
+      formTeacherName: matchedTeacher?.fullName || classData.formTeacherName
+    };
+    await setDoc(newDocRef, payload);
+    if (matchedTeacher) {
+      await updateDoc(doc(db, 'staff', matchedTeacher.id), {
+        isFormTeacher: true,
+        formTeacherClassId: newDocRef.id,
+        formTeacherClassName: classData.name
+      });
+    }
   };
 
   const updateClass = async (id: string, updates: Partial<SchoolClass>) => {
-    setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
-    await updateDoc(doc(db, 'classes', id), updates);
+    const matchedTeacher = staff.find(
+      (s) =>
+        (updates.formTeacherId && s.id === updates.formTeacherId) ||
+        (updates.formTeacherName &&
+          s.fullName.toLowerCase() === updates.formTeacherName.trim().toLowerCase())
+    );
+    const enrichedUpdates: Partial<SchoolClass> = {
+      ...updates,
+      ...(matchedTeacher
+        ? { formTeacherId: matchedTeacher.id, formTeacherName: matchedTeacher.fullName }
+        : {})
+    };
+    setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, ...enrichedUpdates } : c)));
+    await updateDoc(doc(db, 'classes', id), enrichedUpdates);
+    if (matchedTeacher) {
+      await updateDoc(doc(db, 'staff', matchedTeacher.id), {
+        isFormTeacher: true,
+        formTeacherClassId: id,
+        formTeacherClassName: updates.name || classes.find((c) => c.id === id)?.name || ''
+      });
+    }
   };
 
   const deleteClass = async (id: string) => {
@@ -467,10 +520,12 @@ export function useSchoolData() {
     const newDocRef = doc(collection(db, 'students'));
     const student: Student = {
       ...studentData,
+      password: studentData.password || '0000',
       id: newDocRef.id,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+    setStudents((prev) => [student, ...prev.filter((s) => s.id !== student.id)]);
     await setDoc(newDocRef, student);
     return student;
   };

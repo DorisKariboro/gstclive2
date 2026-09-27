@@ -91,6 +91,7 @@ const DEFAULT_STAFF: Staff[] = [
   {
     id: 'stf-001',
     staffId: 'GSTC/STF/001',
+    password: '0000',
     fullName: 'Engr. Danjuma Bello',
     email: 'danjuma.bello@gstcgarki.edu.ng',
     phone: '+234 803 123 4567',
@@ -107,6 +108,7 @@ const DEFAULT_STAFF: Staff[] = [
   {
     id: 'stf-002',
     staffId: 'GSTC/STF/002',
+    password: '0000',
     fullName: 'Mrs. Fatima Aliyu',
     email: 'fatima.aliyu@gstcgarki.edu.ng',
     phone: '+234 802 234 5678',
@@ -126,6 +128,7 @@ const DEFAULT_STUDENTS: Student[] = [
   {
     id: 'std-001',
     admissionNo: 'GSTC/2025/001',
+    password: '0000',
     firstName: 'Ibrahim',
     lastName: 'Musa',
     gender: 'Male',
@@ -144,6 +147,7 @@ const DEFAULT_STUDENTS: Student[] = [
   {
     id: 'std-002',
     admissionNo: 'GSTC/2025/002',
+    password: '0000',
     firstName: 'Amina',
     lastName: 'Suleiman',
     gender: 'Female',

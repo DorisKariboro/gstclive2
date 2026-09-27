@@ -24,7 +24,11 @@ import {
   Check,
   Newspaper,
   Calendar,
-  Send
+  Send,
+  Eye,
+  EyeOff,
+  Copy,
+  Key
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -102,6 +106,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [teacherName, setTeacherName] = useState('');
   const [teacherEmail, setTeacherEmail] = useState('');
   const [teacherPhone, setTeacherPhone] = useState('');
+  const [teacherPassword, setTeacherPassword] = useState('0000');
   const [isFormTeacher, setIsFormTeacher] = useState(false);
   const [formTeacherClassId, setFormTeacherClassId] = useState(classes[0]?.id || '');
   const [submittingTeacher, setSubmittingTeacher] = useState(false);
@@ -129,7 +134,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [stdClassId, setStdClassId] = useState(classes[0]?.id || '');
   const [stdGuardianName, setStdGuardianName] = useState('');
   const [stdGuardianPhone, setStdGuardianPhone] = useState('');
+  const [stdPassword, setStdPassword] = useState('0000');
   const [submittingStudent, setSubmittingStudent] = useState(false);
+
+  // Login credentials visibility & copy state
+  const [visiblePasswords, setVisiblePasswords] = useState<{ [id: string]: boolean }>({});
+  const [showAllTeacherPasswords, setShowAllTeacherPasswords] = useState(false);
+  const [showAllStudentPasswords, setShowAllStudentPasswords] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const togglePasswordVisibility = (id: string) => {
+    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // Allocation form (Assign subject to teacher)
   const [allocTeacherId, setAllocTeacherId] = useState(staff[0]?.id || '');
@@ -229,6 +251,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTeacherName('');
     setTeacherEmail('');
     setTeacherPhone('');
+    setTeacherPassword('0000');
     setIsFormTeacher(false);
     setFormTeacherClassId(classes[0]?.id || '');
     setShowTeacherModal(true);
@@ -239,6 +262,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTeacherName(stf.fullName);
     setTeacherEmail(stf.email);
     setTeacherPhone(stf.phone);
+    setTeacherPassword(stf.password || '0000');
     setIsFormTeacher(Boolean(stf.isFormTeacher));
     setFormTeacherClassId(stf.formTeacherClassId || classes[0]?.id || '');
     setShowTeacherModal(true);
@@ -255,6 +279,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           fullName: teacherName,
           email: teacherEmail || editingTeacher.email,
           phone: teacherPhone || editingTeacher.phone,
+          password: teacherPassword.trim() || '0000',
           role: isFormTeacher ? 'Form Master' : 'Teacher',
           assignedClasses:
             isFormTeacher && selectedClass
@@ -270,6 +295,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         await onAddStaff({
           staffId,
+          password: teacherPassword.trim() || '0000',
           fullName: teacherName,
           email:
             teacherEmail ||
@@ -290,6 +316,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setTeacherName('');
       setTeacherEmail('');
       setTeacherPhone('');
+      setTeacherPassword('0000');
       setIsFormTeacher(false);
       setShowTeacherModal(false);
     } catch (err) {
@@ -389,6 +416,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setStdClassId(classes[0]?.id || '');
     setStdGuardianName('');
     setStdGuardianPhone('');
+    setStdPassword('0000');
     setShowStudentModal(true);
   };
 
@@ -402,6 +430,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     );
     setStdGuardianName(std.guardianName || '');
     setStdGuardianPhone(std.guardianPhone || '');
+    setStdPassword(std.password || '0000');
     setShowStudentModal(true);
   };
 
@@ -418,13 +447,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           classId: chosenClass?.id || editingStudent.classId,
           className: chosenClass?.name || editingStudent.className,
           guardianName: stdGuardianName || 'Guardian',
-          guardianPhone: stdGuardianPhone || '+234 800 000 0000'
+          guardianPhone: stdGuardianPhone || '+234 800 000 0000',
+          password: stdPassword.trim() || '0000'
         });
       } else if (onAddStudent) {
         const admissionIndex = (students.length + 1).toString().padStart(3, '0');
         const admissionNo = `GSTC/2026/${admissionIndex}`;
         await onAddStudent({
           admissionNo,
+          password: stdPassword.trim() || '0000',
           firstName: stdFirstName,
           lastName: stdLastName,
           gender: stdGender,
@@ -443,6 +474,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setStdLastName('');
       setStdGuardianName('');
       setStdGuardianPhone('');
+      setStdPassword('0000');
       setShowStudentModal(false);
     } catch (err) {
       console.error(err);
@@ -553,23 +585,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 1: TEACHERS MANAGEMENT (Add / Edit / Remove) */}
       {activeSubTab === 'teachers' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-stone-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-stone-200">
             <div>
-              <h3 className="text-sm font-bold text-stone-900">Registered Teaching Faculty</h3>
+              <h3 className="text-sm font-bold text-stone-900">Registered Teaching Faculty &amp; Login Details</h3>
               <p className="text-xs text-stone-500">
-                Add, edit, or remove teachers and allocate form master roles
+                Add, edit, or remove teachers, view/copy their login credentials, and allocate form master roles
               </p>
             </div>
-            <button
-              onClick={openAddTeacherModal}
-              className="px-3.5 py-1.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Add Teacher
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAllTeacherPasswords((prev) => !prev)}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg border border-stone-300 flex items-center gap-1.5"
+              >
+                {showAllTeacherPasswords ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                <span>{showAllTeacherPasswords ? 'Hide Passwords' : 'Show All Passwords'}</span>
+              </button>
+              <button
+                onClick={openAddTeacherModal}
+                className="px-3.5 py-1.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Add Teacher
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {staff.map((stf) => (
+            {staff.map((stf) => {
+              const teacherPass = stf.password || '0000';
+              const isPassVisible = showAllTeacherPasswords || visiblePasswords[stf.id];
+              return (
               <div
                 key={stf.id}
                 className="bg-white p-5 rounded-xl border border-stone-200 shadow-2xs space-y-3 relative group"
@@ -612,6 +657,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
+                {/* Teacher Login Details Box */}
+                <div className="p-2.5 bg-emerald-50/70 rounded-lg border border-emerald-200 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1">
+                      <Key className="w-3 h-3 text-emerald-700" /> Teacher Login Details
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`Login ID: ${stf.staffId} | Password: ${teacherPass}`, `stf-${stf.id}`)}
+                      className="text-[10px] font-semibold text-[#0b4d2c] hover:underline flex items-center gap-1"
+                    >
+                      {copiedId === `stf-${stf.id}` ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" /> Copy Login
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-stone-500">Login ID / Staff No:</span>
+                    <span className="font-mono font-bold text-stone-900">{stf.staffId}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-stone-500">Password:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-[#0b4d2c] bg-white px-2 py-0.5 rounded border border-emerald-200">
+                        {isPassVisible ? teacherPass : '••••••••'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility(stf.id)}
+                        className="text-stone-500 hover:text-stone-800 p-0.5"
+                        title={isPassVisible ? 'Hide Password' : 'Show Password'}
+                      >
+                        {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="pt-2 border-t border-stone-100 flex flex-wrap gap-1.5 text-xs">
                   {stf.isFormTeacher && (
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
@@ -623,7 +712,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </span>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -782,19 +872,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 4: STUDENTS MANAGEMENT (Add / Edit / Remove) */}
       {activeSubTab === 'students' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-stone-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-stone-200">
             <div>
-              <h3 className="text-sm font-bold text-stone-900">Enrolled Students ({students.length})</h3>
+              <h3 className="text-sm font-bold text-stone-900">
+                Enrolled Students &amp; Login Details ({students.length})
+              </h3>
               <p className="text-xs text-stone-500">
-                Add, edit, or remove student records across school classes
+                Add, edit, or remove student records and view/copy student login credentials across school classes
               </p>
             </div>
-            <button
-              onClick={openAddStudentModal}
-              className="px-3.5 py-1.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5"
-            >
-              <UserPlus className="w-4 h-4" /> Add Student
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAllStudentPasswords((prev) => !prev)}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg border border-stone-300 flex items-center gap-1.5"
+              >
+                {showAllStudentPasswords ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                <span>{showAllStudentPasswords ? 'Hide Passwords' : 'Show All Passwords'}</span>
+              </button>
+              <button
+                onClick={openAddStudentModal}
+                className="px-3.5 py-1.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5"
+              >
+                <UserPlus className="w-4 h-4" /> Add Student
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-2xs">
@@ -802,8 +904,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <table className="w-full text-left text-xs text-stone-600">
                 <thead className="bg-stone-50 border-b border-stone-200 text-stone-700 font-semibold uppercase text-[11px]">
                   <tr>
-                    <th className="py-3 px-4">Admission No</th>
+                    <th className="py-3 px-4">Login ID (Admission No)</th>
                     <th className="py-3 px-4">Full Name</th>
+                    <th className="py-3 px-4">Login Password</th>
                     <th className="py-3 px-4">Class</th>
                     <th className="py-3 px-4">Gender</th>
                     <th className="py-3 px-4">Guardian Contact</th>
@@ -811,13 +914,57 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
-                  {students.map((std) => (
+                  {students.map((std) => {
+                    const stdPass = std.password || '0000';
+                    const isPassVisible = showAllStudentPasswords || visiblePasswords[std.id];
+                    return (
                     <tr key={std.id} className="hover:bg-emerald-50/40 transition">
-                      <td className="py-3 px-4 font-mono font-bold text-[#0b4d2c]">
-                        {std.admissionNo}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-[#0b4d2c]">{std.admissionNo}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(std.admissionNo, `adm-${std.id}`)}
+                            className="text-stone-400 hover:text-stone-700 p-0.5"
+                            title="Copy Login ID"
+                          >
+                            {copiedId === `adm-${std.id}` ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                       <td className="py-3 px-4 font-semibold text-stone-900">
                         {std.firstName} {std.lastName}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-[#0b4d2c] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {isPassVisible ? stdPass : '••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility(std.id)}
+                            className="text-stone-400 hover:text-stone-700 p-1"
+                            title={isPassVisible ? 'Hide Password' : 'Show Password'}
+                          >
+                            {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(stdPass, `pass-${std.id}`)}
+                            className="text-stone-400 hover:text-stone-700 p-1"
+                            title="Copy Password"
+                          >
+                            {copiedId === `pass-${std.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 font-medium">
@@ -860,7 +1007,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1381,6 +1529,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">
+                  Teacher Portal Login Password
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Default: 0000"
+                  value={teacherPassword}
+                  onChange={(e) => setTeacherPassword(e.target.value)}
+                  className="w-full px-3 py-2 font-mono border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none bg-emerald-50/40"
+                />
+              </div>
+
               {/* Designated Form Teacher Switch */}
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-200 space-y-2">
                 <div className="flex items-center justify-between">
@@ -1641,6 +1803,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c]"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">
+                  Student Portal Login Password
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Default: 0000"
+                  value={stdPassword}
+                  onChange={(e) => setStdPassword(e.target.value)}
+                  className="w-full px-3 py-2 font-mono border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] bg-emerald-50/40"
+                />
               </div>
               <div className="pt-2 flex justify-end gap-2">
                 <button

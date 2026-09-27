@@ -115,7 +115,11 @@ function SchoolAppContent() {
 
   // Find current teacher or student record if available
   const loggedInTeacher = staff.find(
-    (s) => s.staffId === userProfile?.staffId || s.email === userProfile?.email
+    (s) =>
+      (userProfile?.uid && s.id === userProfile.uid) ||
+      (userProfile?.staffId && s.staffId?.toLowerCase() === userProfile.staffId.toLowerCase()) ||
+      (userProfile?.email && s.email?.toLowerCase() === userProfile.email.toLowerCase()) ||
+      (userProfile?.displayName && s.fullName?.toLowerCase() === userProfile.displayName.toLowerCase())
   );
 
   const goToLoginPage = () => {
@@ -244,6 +248,7 @@ function SchoolAppContent() {
             assignments={assignments}
             results={results}
             onEnrollStudent={enrollStudent}
+            onUpdateStudent={updateStudent}
             onDeenrollStudent={deenrollStudent}
             onSaveScore={saveStudentScore}
           />
