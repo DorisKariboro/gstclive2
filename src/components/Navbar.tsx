@@ -47,8 +47,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (currentRole === 'super_admin') {
       return [
         { id: 'home', label: 'Home Page', icon: Home },
+        { id: 'public_portal', label: 'School News', icon: Newspaper },
         { id: 'super_admin', label: 'Super Admin Dashboard' },
         { id: 'admin_panel', label: 'Admin Operations' },
+        { id: 'post_news', label: 'Post School News' },
         { id: 'website_manager', label: 'Website Customization' },
         { id: 'scratch_cards', label: 'Scratch Cards' },
         { id: 'students', label: 'Students' },
@@ -58,6 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (currentRole === 'admin') {
       return [
         { id: 'home', label: 'Home Page', icon: Home },
+        { id: 'public_portal', label: 'School News', icon: Newspaper },
         { id: 'admin_panel', label: 'Admin Operations' },
         { id: 'post_news', label: 'Post School News' },
         { id: 'classes', label: 'Classes' },
@@ -71,6 +74,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (currentRole === 'staff') {
       return [
         { id: 'home', label: 'Home Page', icon: Home },
+        { id: 'public_portal', label: 'School News', icon: Newspaper },
         { id: 'staff_dashboard', label: 'Teacher Gradebook' },
         { id: 'results', label: 'Class Broadsheet' }
       ];
@@ -78,6 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     // student role
     return [
       { id: 'home', label: 'Home Page', icon: Home },
+      { id: 'public_portal', label: 'School News', icon: Newspaper },
       { id: 'student_dashboard', label: 'My Terminal Result' }
     ];
   };

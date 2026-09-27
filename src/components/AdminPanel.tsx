@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SchoolClass,
   Subject,
@@ -9,6 +9,8 @@ import {
   SchoolNews
 } from '../types/school';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { PostSchoolNewsForm } from './PostSchoolNewsForm';
+import { getNewsImages, getNewsVideos } from '../utils/newsMediaUtils';
 import {
   GraduationCap,
   BookOpen,
@@ -28,7 +30,10 @@ import {
   Eye,
   EyeOff,
   Copy,
-  Key
+  Key,
+  Image as ImageIcon,
+  Video,
+  ExternalLink
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -65,6 +70,7 @@ interface AdminPanelProps {
   onPostNews?: (data: Omit<SchoolNews, 'id' | 'publishedAt'>) => Promise<SchoolNews>;
   onUpdateNews?: (id: string, updates: Partial<SchoolNews>) => Promise<void>;
   onDeleteNews?: (id: string) => Promise<void>;
+  onNavigateToPublicNews?: () => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -94,11 +100,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateSettings,
   onPostNews,
   onUpdateNews,
-  onDeleteNews
+  onDeleteNews,
+  onNavigateToPublicNews
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
     'teachers' | 'classes' | 'subjects' | 'students' | 'allocations' | 'news' | 'settings'
   >(initialSubTab);
+
+  // Ensure clicking "Post School News" in Navbar switches sub-tab immediately even when AdminPanel is already mounted
+  useEffect(() => {
+    setActiveSubTab(initialSubTab);
+  }, [initialSubTab]);
 
   // Teacher registration / edit form
   const [showTeacherModal, setShowTeacherModal] = useState(false);
@@ -541,15 +553,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </p>
         </div>
 
-        {/* Quick Bulk Action Button: Assign all subjects to all classes */}
-        <button
-          onClick={handleBulkAssignAllSubjects}
-          disabled={bulkAssigning}
-          className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-2 self-start md:self-auto shrink-0"
-        >
-          <Layers className="w-4 h-4 text-stone-900" />
-          <span>{bulkAssigning ? 'Linking Subjects...' : 'Assign All Subjects to All Classes'}</span>
-        </button>
+        {/* Quick Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingNewsItem(null);
+              setActiveSubTab('news');
+            }}
+            className="px-4 py-2 bg-white hover:bg-emerald-50 text-[#0b4d2c] text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer"
+          >
+            <Newspaper className="w-4 h-4 text-[#0b4d2c]" />
+            <span>Post School News</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleBulkAssignAllSubjects}
+            disabled={bulkAssigning}
+            className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer"
+          >
+            <Layers className="w-4 h-4 text-stone-900" />
+            <span>{bulkAssigning ? 'Linking Subjects...' : 'Assign All Subjects to All Classes'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Admin Subtabs */}
@@ -1260,214 +1287,133 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 7: POST / EDIT / DELETE NEWS FOR VISITORS */}
       {activeSubTab === 'news' && (
         <div className="space-y-6">
-          {/* Post / Edit News Form Card */}
-          <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                  <Newspaper className="w-4 h-4 text-emerald-700" />
-                  {editingNewsItem ? 'Edit Published School News Post' : 'Post School News & Public Announcements'}
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Add, edit, or delete verified school bulletins, admissions notices, and exam timetables.
-                </p>
-              </div>
-              {postedSuccess && (
-                <span className="text-xs text-emerald-700 font-bold flex items-center gap-1.5 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  <Check className="w-4 h-4" /> Saved to Website!
-                </span>
-              )}
-            </div>
-
-            <form onSubmit={handlePostNewsSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block font-semibold text-stone-700 mb-1">
-                    News Article Headline / Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. First Term Practical Examination Timetable Released"
-                    value={newsTitle}
-                    onChange={(e) => setNewsTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Category</label>
-                  <select
-                    value={newsCategory}
-                    onChange={(e: any) => setNewsCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] bg-white focus:outline-none"
-                  >
-                    <option value="General">General School News</option>
-                    <option value="Admissions">Admissions &amp; Enrollment</option>
-                    <option value="Examination">Examination &amp; Results</option>
-                    <option value="Technical Workshop">Technical Workshop / Exhibition</option>
-                    <option value="Sports & Culture">Sports &amp; Culture</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-stone-700 mb-1">
-                  Brief Summary / Lead Text
-                </label>
-                <input
-                  type="text"
-                  placeholder="One or two sentences summarizing the announcement for the preview card..."
-                  value={newsSummary}
-                  onChange={(e) => setNewsSummary(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-stone-700 mb-1">
-                  Full Article Content *
-                </label>
-                <textarea
-                  required
-                  rows={4}
-                  placeholder="Write the full body of the news article here for visitors..."
-                  value={newsContent}
-                  onChange={(e) => setNewsContent(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none resize-y"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Author Name / Sign-off</label>
-                  <input
-                    type="text"
-                    value={newsAuthorName}
-                    onChange={(e) => setNewsAuthorName(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Author Designation / Office</label>
-                  <input
-                    type="text"
-                    value={newsAuthorRole}
-                    onChange={(e) => setNewsAuthorRole(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#0b4d2c] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-3">
-                {editingNewsItem && (
-                  <button
-                    type="button"
-                    onClick={handleCancelEditNews}
-                    className="px-4 py-2.5 border border-stone-300 rounded-lg text-stone-700 font-semibold hover:bg-stone-50"
-                  >
-                    Cancel Edit
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={postingNews}
-                  className="px-5 py-2.5 bg-[#0b4d2c] hover:bg-[#083a21] text-white font-bold rounded-lg shadow-sm flex items-center gap-2 transition"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>
-                    {postingNews
-                      ? 'Saving...'
-                      : editingNewsItem
-                      ? 'Update Published Post'
-                      : 'Publish News to Website'}
-                  </span>
-                </button>
-              </div>
-            </form>
-          </div>
+          <PostSchoolNewsForm
+            editingItem={editingNewsItem}
+            onCancelEdit={() => setEditingNewsItem(null)}
+            onPostNews={onPostNews}
+            onUpdateNews={onUpdateNews}
+            onViewPublishedNews={onNavigateToPublicNews}
+          />
 
           {/* List of Published News */}
           <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden">
-            <div className="p-4 border-b border-stone-200 bg-stone-50 flex items-center justify-between">
+            <div className="p-4 border-b border-stone-200 bg-stone-50 flex flex-wrap items-center justify-between gap-2">
               <h4 className="font-bold text-xs text-stone-800 flex items-center gap-2">
                 <Newspaper className="w-4 h-4 text-emerald-700" />
                 <span>Live Published News Articles ({news.length})</span>
               </h4>
-              <span className="text-[11px] text-stone-500">
-                Visible to all visitors, parents, and students
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-stone-500">
+                  Visible on Landing Page &amp; School News
+                </span>
+                {onNavigateToPublicNews && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToPublicNews}
+                    className="px-2.5 py-1 bg-[#0b4d2c] hover:bg-[#083a21] text-white text-[11px] font-bold rounded-md flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <span>View School News Page</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {news.length === 0 ? (
               <div className="p-8 text-center text-stone-500 text-xs">
-                No news articles published yet. Use the form above to post news for visitors to see.
+                No news articles published yet. Use the form above to post news with images and videos for visitors to see.
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
-                {news.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-4 hover:bg-stone-50/80 transition flex flex-col sm:flex-row sm:items-start justify-between gap-3 text-xs"
-                  >
-                    <div className="space-y-1.5 max-w-2xl">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          {item.category}
-                        </span>
-                        <span className="text-[11px] text-stone-400 font-mono flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-stone-400" />
-                          {new Date(item.publishedAt).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
-                        </span>
+                {news.map((item) => {
+                  const imgs = getNewsImages(item);
+                  const vids = getNewsVideos(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 hover:bg-stone-50/80 transition flex flex-col sm:flex-row sm:items-start justify-between gap-4 text-xs"
+                    >
+                      <div className="flex flex-col sm:flex-row items-start gap-3.5 max-w-3xl">
+                        {imgs.length > 0 && (
+                          <img
+                            src={imgs[0].url}
+                            alt={item.title}
+                            className="w-24 h-16 object-cover rounded-lg border border-stone-200 shrink-0 bg-stone-100"
+                          />
+                        )}
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase text-emerald-800">
+                              {item.category}
+                            </span>
+                            <span aria-hidden="true" className="text-stone-300">·</span>
+                            <span className="text-[11px] text-stone-400 font-mono flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-stone-400" />
+                              {new Date(item.publishedAt).toLocaleDateString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            {imgs.length > 0 && (
+                              <span className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+                                <ImageIcon className="w-3 h-3" />
+                                <span>{imgs.length} {imgs.length === 1 ? 'Image' : 'Images'}</span>
+                              </span>
+                            )}
+                            {vids.length > 0 && (
+                              <span className="text-[10px] font-semibold text-amber-700 flex items-center gap-1">
+                                <Video className="w-3 h-3" />
+                                <span>{vids.length} {vids.length === 1 ? 'Video' : 'Videos'}</span>
+                              </span>
+                            )}
+                          </div>
+                          <h5 className="font-bold text-sm text-stone-900 leading-snug">{item.title}</h5>
+                          <p className="text-stone-600 line-clamp-2 leading-relaxed">
+                            {item.summary || item.content}
+                          </p>
+                          <p className="text-[11px] text-stone-400">
+                            Published by <span className="font-medium text-stone-600">{item.authorName}</span> (
+                            {item.authorRole})
+                          </p>
+                        </div>
                       </div>
-                      <h5 className="font-bold text-sm text-stone-900 leading-snug">{item.title}</h5>
-                      <p className="text-stone-600 line-clamp-2 leading-relaxed">
-                        {item.summary || item.content}
-                      </p>
-                      <p className="text-[11px] text-stone-400">
-                        Published by <span className="font-medium text-stone-600">{item.authorName}</span> (
-                        {item.authorRole})
-                      </p>
-                    </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleStartEditNews(item)}
-                        className="px-2.5 py-1.5 text-xs text-[#0b4d2c] hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-200 flex items-center gap-1 transition cursor-pointer"
-                        title="Edit news article"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit Post</span>
-                      </button>
-                      {onDeleteNews && (
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                         <button
                           type="button"
-                          onClick={() =>
-                            setPendingDelete({
-                              title: 'Delete Published News Article',
-                              message: `Are you sure you want to permanently delete the news article "${item.title}" from the website?`,
-                              confirmLabel: 'Yes, Delete Article',
-                              onConfirm: async () => {
-                                await onDeleteNews(item.id);
-                                setPendingDelete(null);
-                              }
-                            })
-                          }
-                          className="px-2.5 py-1.5 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 flex items-center gap-1 transition cursor-pointer"
-                          title="Delete news article"
+                          onClick={() => handleStartEditNews(item)}
+                          className="px-2.5 py-1.5 text-xs text-[#0b4d2c] hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-200 flex items-center gap-1 transition cursor-pointer"
+                          title="Edit news article"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete News</span>
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit Post</span>
                         </button>
-                      )}
+                        {onDeleteNews && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingDelete({
+                                title: 'Delete Published News Article',
+                                message: `Are you sure you want to permanently delete the news article "${item.title}" from the website?`,
+                                confirmLabel: 'Yes, Delete Article',
+                                onConfirm: async () => {
+                                  await onDeleteNews(item.id);
+                                  setPendingDelete(null);
+                                }
+                              })
+                            }
+                            className="px-2.5 py-1.5 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 flex items-center gap-1 transition cursor-pointer"
+                            title="Delete news article"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete News</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

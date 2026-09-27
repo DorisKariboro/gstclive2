@@ -139,6 +139,15 @@ export interface Notice {
   actionText?: string;
 }
 
+export interface SchoolNewsMediaItem {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  caption?: string;
+  mimeType?: string;
+  chunkedMediaId?: string;
+}
+
 export interface SchoolNews {
   id: string;
   title: string;
@@ -149,6 +158,9 @@ export interface SchoolNews {
   authorRole: string;
   publishedAt: number;
   imageUrl?: string;
+  videoUrl?: string;
+  videoChunkedId?: string;
+  mediaItems?: SchoolNewsMediaItem[];
   pinned?: boolean;
 }
 

@@ -192,16 +192,70 @@ export function useSchoolData() {
       (err) => console.error('Settings sync error:', err)
     );
 
-    // 10. News & Announcements listener (for visitors & public)
+    // 10. News & Announcements listener (for visitors & public) + Chunked Media reassembly
+    let rawNewsList: SchoolNews[] = [];
+    const mediaChunksMap = new Map<string, { index: number; data: string }[]>();
+
+    const resolveNewsWithMedia = () => {
+      const resolved = rawNewsList.map((item) => {
+        let resolvedVideoUrl = item.videoUrl;
+        if (resolvedVideoUrl && resolvedVideoUrl.startsWith('__CHUNKED_MEDIA__:')) {
+          const mediaId = resolvedVideoUrl.replace('__CHUNKED_MEDIA__:', '');
+          const chunks = mediaChunksMap.get(mediaId);
+          if (chunks && chunks.length > 0) {
+            const sorted = [...chunks].sort((a, b) => a.index - b.index);
+            resolvedVideoUrl = sorted.map((c) => c.data).join('');
+          }
+        }
+        const resolvedMediaItems = item.mediaItems?.map((m) => {
+          if (m.url && m.url.startsWith('__CHUNKED_MEDIA__:')) {
+            const mediaId = m.url.replace('__CHUNKED_MEDIA__:', '');
+            const chunks = mediaChunksMap.get(mediaId);
+            if (chunks && chunks.length > 0) {
+              const sorted = [...chunks].sort((a, b) => a.index - b.index);
+              return { ...m, url: sorted.map((c) => c.data).join('') };
+            }
+          }
+          return m;
+        });
+        return {
+          ...item,
+          videoUrl: resolvedVideoUrl,
+          mediaItems: resolvedMediaItems
+        };
+      });
+      resolved.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+      setNews(resolved);
+    };
+
     const unsubNews = onSnapshot(
       collection(db, 'school_news'),
       (snap) => {
         const list: SchoolNews[] = [];
         snap.forEach((d) => list.push({ ...d.data(), id: d.id } as SchoolNews));
-        list.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
-        setNews(list);
+        rawNewsList = list;
+        resolveNewsWithMedia();
       },
       (err) => console.error('News sync error:', err)
+    );
+
+    const unsubNewsMedia = onSnapshot(
+      collection(db, 'school_news_media'),
+      (snap) => {
+        mediaChunksMap.clear();
+        snap.forEach((d) => {
+          const data = d.data() as { mediaId: string; chunkIndex: number; data: string };
+          if (data.mediaId && typeof data.data === 'string') {
+            const arr = mediaChunksMap.get(data.mediaId) || [];
+            arr.push({ index: data.chunkIndex || 0, data: data.data });
+            mediaChunksMap.set(data.mediaId, arr);
+          }
+        });
+        if (rawNewsList.length > 0) {
+          resolveNewsWithMedia();
+        }
+      },
+      (err) => console.error('News media sync error:', err)
     );
 
     // 11. Website Customization listener (Super Admin controls website changes)
@@ -255,6 +309,7 @@ export function useSchoolData() {
       unsubNotice();
       unsubSettings();
       unsubNews();
+      unsubNewsMedia();
       unsubCustom();
     };
   }, []);
@@ -315,21 +370,97 @@ export function useSchoolData() {
     return batchList;
   };
 
+  // Helper to store large data URLs (>350KB) in chunks in school_news_media
+  const persistMediaStringIfLarge = async (rawStr: string | undefined, newsId: string, prefix: string): Promise<string | undefined> => {
+    if (!rawStr) return rawStr;
+    const CHUNK_SIZE = 350000;
+    if (rawStr.length <= CHUNK_SIZE) {
+      return rawStr;
+    }
+    const mediaId = `${newsId}_${prefix}_${Date.now()}`;
+    const totalChunks = Math.ceil(rawStr.length / CHUNK_SIZE);
+    for (let i = 0; i < totalChunks; i++) {
+      const slice = rawStr.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      await setDoc(doc(db, 'school_news_media', `${mediaId}_${i}`), {
+        mediaId,
+        newsId,
+        chunkIndex: i,
+        totalChunks,
+        data: slice,
+        createdAt: Date.now()
+      });
+    }
+    return `__CHUNKED_MEDIA__:${mediaId}`;
+  };
+
   // --- Admin Actions ---
   const postNews = async (newsData: Omit<SchoolNews, 'id' | 'publishedAt'>) => {
     const newDocRef = doc(collection(db, 'school_news'));
-    const newsItem: SchoolNews = {
+    const fullNewsItem: SchoolNews = {
       ...newsData,
       id: newDocRef.id,
       publishedAt: Date.now()
     };
-    await setDoc(newDocRef, newsItem);
-    return newsItem;
+
+    // Optimistically update local state with full media immediately
+    setNews((prev) => [fullNewsItem, ...prev.filter((n) => n.id !== fullNewsItem.id)]);
+
+    // Prepare Firestore-safe payload (chunking any oversized video/media items)
+    const firestoreVideoUrl = await persistMediaStringIfLarge(
+      newsData.videoUrl,
+      newDocRef.id,
+      'vid'
+    );
+    const firestoreMediaItems = newsData.mediaItems
+      ? await Promise.all(
+          newsData.mediaItems.map(async (m, idx) => {
+            const safeUrl = await persistMediaStringIfLarge(m.url, newDocRef.id, `m${idx}`);
+            return { ...m, url: safeUrl || m.url };
+          })
+        )
+      : undefined;
+
+    const firestorePayload: Record<string, any> = {
+      ...fullNewsItem
+    };
+    if (firestoreVideoUrl !== undefined) {
+      firestorePayload.videoUrl = firestoreVideoUrl;
+    }
+    if (firestoreMediaItems !== undefined) {
+      firestorePayload.mediaItems = firestoreMediaItems;
+    }
+    Object.keys(firestorePayload).forEach((k) => {
+      if (firestorePayload[k] === undefined) {
+        delete firestorePayload[k];
+      }
+    });
+
+    await setDoc(newDocRef, firestorePayload);
+    return fullNewsItem;
   };
 
   const updateNews = async (id: string, updates: Partial<SchoolNews>) => {
     setNews((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)));
-    await updateDoc(doc(db, 'school_news', id), updates);
+
+    const firestoreUpdates: Record<string, any> = { ...updates };
+    if (updates.videoUrl !== undefined) {
+      firestoreUpdates.videoUrl = await persistMediaStringIfLarge(updates.videoUrl, id, 'vid');
+    }
+    if (updates.mediaItems !== undefined) {
+      firestoreUpdates.mediaItems = await Promise.all(
+        updates.mediaItems.map(async (m, idx) => {
+          const safeUrl = await persistMediaStringIfLarge(m.url, id, `m${idx}`);
+          return { ...m, url: safeUrl || m.url };
+        })
+      );
+    }
+    Object.keys(firestoreUpdates).forEach((k) => {
+      if (firestoreUpdates[k] === undefined) {
+        delete firestoreUpdates[k];
+      }
+    });
+
+    await updateDoc(doc(db, 'school_news', id), firestoreUpdates);
   };
 
   const deleteNews = async (id: string) => {
@@ -659,9 +790,38 @@ export function useSchoolData() {
     }
 
     const newUsage = card.usageCount + 1;
+    const newStatus = newUsage >= card.maxUsage ? 'Used' : 'Active';
+
+    setScratchCards((prev) =>
+      prev.map((c) =>
+        c.id === card.id
+          ? {
+              ...c,
+              usageCount: newUsage,
+              status: newStatus,
+              usedByStudentId: student.id,
+              usedByStudentName: `${student.firstName} ${student.lastName}`,
+              usedByAdmissionNo: student.admissionNo
+            }
+          : c
+      )
+    );
+
+    setStudents((prev) =>
+      prev.map((s) =>
+        s.id === student.id
+          ? {
+              ...s,
+              hasActivatedScratchCard: true,
+              activatedScratchCardPin: card.pin
+            }
+          : s
+      )
+    );
+
     await updateDoc(doc(db, 'scratch_cards', card.id), {
       usageCount: newUsage,
-      status: newUsage >= card.maxUsage ? 'Used' : 'Active',
+      status: newStatus,
       usedByStudentId: student.id,
       usedByStudentName: `${student.firstName} ${student.lastName}`,
       usedByAdmissionNo: student.admissionNo

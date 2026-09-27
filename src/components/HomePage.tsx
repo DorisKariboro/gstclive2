@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { WebsiteCustomization, SchoolNews, ScratchCard, ExamResult, Student } from '../types/school';
 import { ModernHeroSlider } from './ModernHeroSlider';
 import { SchoolBadge } from './SchoolBadge';
+import { SchoolNewsCard, SchoolNewsDetailModal } from './NewsCardAndModal';
+import { PostSchoolNewsForm } from './PostSchoolNewsForm';
 import {
   Sparkles,
   MapPin,
@@ -22,7 +24,10 @@ import {
   ExternalLink,
   Layers,
   Search,
-  KeyRound
+  KeyRound,
+  Newspaper,
+  Plus,
+  X
 } from 'lucide-react';
 
 interface HomePageProps {
@@ -33,6 +38,9 @@ interface HomePageProps {
   results?: ExamResult[];
   onOpenLogin: () => void;
   onNavigateToCheckResult: () => void;
+  onPostNews?: (data: Omit<SchoolNews, 'id' | 'publishedAt'>) => Promise<SchoolNews>;
+  onUpdateNews?: (id: string, updates: Partial<SchoolNews>) => Promise<void>;
+  canManageNews?: boolean;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -42,10 +50,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   students = [],
   results = [],
   onOpenLogin,
-  onNavigateToCheckResult
+  onNavigateToCheckResult,
+  onPostNews,
+  onUpdateNews,
+  canManageNews = false
 }) => {
   const [selectedNewsCategory, setSelectedNewsCategory] = useState<string>('All');
   const [activeArticle, setActiveArticle] = useState<SchoolNews | null>(null);
+  const [showPostNewsSpace, setShowPostNewsSpace] = useState(false);
 
   const categories = ['All', 'Admissions', 'Examination', 'Technical Workshop', 'Sports & Culture', 'General'];
 
@@ -293,37 +305,71 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* 5. School News & Public Dispatches (Posted by Admins for Visitors) */}
-      <section className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-200">
+      <section id="landing-school-news" className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-stone-200">
           <div>
             <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-[#0b4d2c]" />
+              <Newspaper className="w-5 h-5 text-[#0b4d2c]" />
               <h2 className="text-2xl font-bold font-serif text-stone-900">
-                School News & Administrative Announcements
+                School News &amp; Administrative Announcements
               </h2>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Verified news, admission notices, and events posted by school administrators.
+              Verified school news, photo galleries, video highlights, admission notices, and events.
             </p>
           </div>
 
-          {/* Category Filter Pills */}
-          <div className="flex flex-wrap gap-1.5">
-            {categories.map((cat) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Post School News button for admins (or if onPostNews is provided) */}
+            {canManageNews && onPostNews && (
               <button
-                key={cat}
-                onClick={() => setSelectedNewsCategory(cat)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-                  selectedNewsCategory === cat
-                    ? 'bg-[#0b4d2c] text-white shadow-xs font-semibold'
-                    : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
-                }`}
+                type="button"
+                onClick={() => setShowPostNewsSpace((prev) => !prev)}
+                className="px-3.5 py-1.5 rounded-lg bg-[#0b4d2c] hover:bg-[#083a21] text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
               >
-                {cat}
+                {showPostNewsSpace ? (
+                  <>
+                    <X className="w-3.5 h-3.5" />
+                    <span>Close News Editor</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Post School News</span>
+                  </>
+                )}
               </button>
-            ))}
+            )}
+
+            {/* Category Filter Controls */}
+            <div className="flex flex-wrap gap-1 p-1 bg-stone-100 rounded-lg">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedNewsCategory(cat)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                    selectedNewsCategory === cat
+                      ? 'bg-[#0b4d2c] text-white shadow-xs font-semibold'
+                      : 'hover:bg-stone-200 text-stone-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* Collapsible Post School News Composer Space */}
+        {showPostNewsSpace && onPostNews && (
+          <div className="animate-in fade-in duration-200">
+            <PostSchoolNewsForm
+              onPostNews={onPostNews}
+              onUpdateNews={onUpdateNews}
+            />
+          </div>
+        )}
 
         {filteredNews.length === 0 ? (
           <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center text-stone-500">
@@ -336,46 +382,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredNews.map((item) => (
-              <div
+              <SchoolNewsCard
                 key={item.id}
-                onClick={() => setActiveArticle(item)}
-                className="bg-white rounded-2xl border border-stone-200 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between p-5 cursor-pointer group hover:border-emerald-400"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      {item.category}
-                    </span>
-                    <span className="text-stone-400 text-[11px] flex items-center gap-1 font-mono">
-                      <Calendar className="w-3 h-3 text-stone-400" />
-                      {new Date(item.publishedAt).toLocaleDateString('en-GB', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </span>
-                  </div>
-
-                  <h3 className="font-bold text-base text-stone-900 group-hover:text-[#0b4d2c] transition-colors leading-snug">
-                    {item.title}
-                  </h3>
-
-                  <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed">
-                    {item.summary || item.content}
-                  </p>
-                </div>
-
-                <div className="pt-4 mt-4 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-                  <div className="flex items-center gap-1.5 text-[11px] truncate">
-                    <User className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                    <span className="font-medium text-stone-700 truncate">{item.authorName}</span>
-                    <span className="text-stone-400 text-[10px]">({item.authorRole})</span>
-                  </div>
-                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-[11px] group-hover:translate-x-1 transition-transform shrink-0">
-                    Read <ChevronRight className="w-3 h-3" />
-                  </span>
-                </div>
-              </div>
+                item={item}
+                onSelect={(article) => setActiveArticle(article)}
+              />
             ))}
           </div>
         )}
@@ -443,61 +454,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
-      {/* Article Detail Modal */}
-      {activeArticle && (
-        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
-                {activeArticle.category}
-              </span>
-              <button
-                onClick={() => setActiveArticle(null)}
-                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-600 text-sm font-bold transition"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold font-serif text-stone-900 leading-snug">
-                {activeArticle.title}
-              </h2>
-              <div className="flex items-center gap-2 text-xs text-stone-400 mt-2 font-mono">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>
-                  {new Date(activeArticle.publishedAt).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </span>
-                <span>•</span>
-                <span>Published by {activeArticle.authorName} ({activeArticle.authorRole})</span>
-              </div>
-            </div>
-
-            {activeArticle.summary && (
-              <p className="text-xs sm:text-sm font-semibold text-stone-700 bg-stone-50 p-3 rounded-lg border-l-4 border-emerald-600">
-                {activeArticle.summary}
-              </p>
-            )}
-
-            <div className="text-stone-700 text-xs sm:text-sm leading-relaxed whitespace-pre-line space-y-2 pt-2">
-              {activeArticle.content}
-            </div>
-
-            <div className="pt-4 border-t border-stone-100 flex justify-end">
-              <button
-                onClick={() => setActiveArticle(null)}
-                className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold"
-              >
-                Close Article
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Article Detail Modal with Images & Videos */}
+      <SchoolNewsDetailModal
+        article={activeArticle}
+        onClose={() => setActiveArticle(null)}
+      />
     </div>
   );
 };

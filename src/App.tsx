@@ -170,6 +170,9 @@ function SchoolAppContent() {
                 goToLoginPage();
               }
             }}
+            onPostNews={postNews}
+            onUpdateNews={updateNews}
+            canManageNews={currentRole === 'admin' || currentRole === 'super_admin'}
           />
         )}
 
@@ -218,6 +221,7 @@ function SchoolAppContent() {
             onPostNews={postNews}
             onUpdateNews={updateNews}
             onDeleteNews={deleteNews}
+            onNavigateToPublicNews={() => setActiveTab('public_portal')}
           />
         )}
 
@@ -234,6 +238,9 @@ function SchoolAppContent() {
               }
             }}
             onOpenAuth={goToLoginPage}
+            onPostNews={postNews}
+            onUpdateNews={updateNews}
+            canManageNews={currentRole === 'admin' || currentRole === 'super_admin'}
           />
         )}
 
